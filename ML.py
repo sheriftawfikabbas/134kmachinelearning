@@ -40,12 +40,12 @@ Z = {'H':1,'C':6,'N':7,'O':8,'F':9}
 Coulomb={}
 Output={}
 data_path='dsgdb9nsd.xyz/'
-num_atoms = 10
-property_index = 6
+num_atoms = 12
+property_index = 8
 list=listdir(data_path)
 count=0
 for l in list:
-    if count < 1000:
+    if count < 4000:
         f = open(data_path+l, "r")
         size=f.readline()
         if int(size) == num_atoms:
@@ -78,7 +78,7 @@ for l in list:
                 continue
 
 Coulomb_df=pd.DataFrame(Coulomb).transpose()
-Output_df=pd.DataFrame(Output).transpose()
+Output_df=pd.DataFrame(Output).transpose()*10
 
 #Create a new StandardScaler scaler object
 scaler = StandardScaler().fit(Coulomb_df)
@@ -90,7 +90,7 @@ X_train_scaled, X_test_scaled, y_train, y_test = train_test_split(
         Coulomb_df, Output_df, test_size=.2, random_state=None)
 
 reports_df = pd.DataFrame(
-    columns=['Name', 'MARE', 'MSE', 'R2', 'PearsonR', 'SpearmanR'])
+    columns=['Name', 'MARE', 'MSE', 'R2'])
 
 for regr_choice in range(5):
 
@@ -102,9 +102,7 @@ for regr_choice in range(5):
                     linear_model.HuberRegressor(
                         epsilon=1.35, max_iter=100, alpha=0.0001, warm_start=False, fit_intercept=True, tol=1e-05),
                     XGBRegressor(objective='reg:linear', colsample_bytree=0.3, learning_rate=0.1,
-                                 max_depth=400, alpha=10, n_estimators=400),
-                    RANSACRegressor(random_state=0),
-                    TheilSenRegressor(random_state=0)
+                                 max_depth=400, alpha=10, n_estimators=400)
                     ]
 
     regr = regr_objects[regr_choice]
@@ -129,31 +127,24 @@ for regr_choice in range(5):
                      y_test.iloc[i][0])/y_test.iloc[i][0]*100)
     print("MARE=", MARE/len(y_predicted))
 
-
     print(mean_squared_error(y_test, y_predicted))
     print(r2_score(y_test, y_predicted))
 
 
-    pearsonrcorr=stats.pearsonr(y_test, y_predicted)
-    spearcorr=stats.spearmanr(y_test, y_predicted)
     errors_file = open(regr_name+'_Test_Analysis.txt', 'w')
     errors_file.write('MARE\t'+str(MARE/len(y_predicted))+'\n')
     errors_file.write(
         'MSE\t'+str(mean_squared_error(y_test, y_predicted))+'\n')
     errors_file.write('r2\t'+str(r2_score(y_test, y_predicted))+'\n')
-    errors_file.write('PearsonR\t'+str(pearsonrcorr[0])+'\n')
-    errors_file.write('SpearmanR\t'+str(spearcorr[0])+'\n')
     errors_file.close()
 
     reports_df_row = pd.DataFrame(
-        columns=['Name', 'MARE', 'MSE', 'R2', 'PearsonR', 'SpearmanR'])
+        columns=['Name', 'MARE', 'MSE', 'R2'])
     reports_df_row.set_value(0, 'Name', regr_name+'_Test')
     reports_df_row.set_value(0, 'MARE', MARE/len(y_predicted))
     reports_df_row.set_value(0, 'MSE', np.sqrt(
         mean_squared_error(y_test, y_predicted)))
     reports_df_row.set_value(0, 'R2', r2_score(y_test, y_predicted))
-    reports_df_row.set_value(0,'PearsonR',pearsonrcorr[0])
-    reports_df_row.set_value(0,'SpearmanR',spearcorr[0])
     reports_df = reports_df.append(reports_df_row)
 
     xPlot = y_test
@@ -183,26 +174,20 @@ for regr_choice in range(5):
     print(MARE/len(y_predicted))
     print(r2_score(y_train, y_predicted))
 
-    pearsonrcorr=stats.pearsonr(y_train, y_predicted)
-    spearcorr=stats.spearmanr(y_train, y_predicted)
     errors_file = open(regr_name+'_Train_Analysis.txt', 'w')
     errors_file.write('MARE\t'+str(MARE/len(y_predicted))+'\n')
     errors_file.write(
         'MSE\t'+str(mean_squared_error(y_train, y_predicted))+'\n')
     errors_file.write('r2\t'+str(r2_score(y_train, y_predicted))+'\n')
-    errors_file.write('PearsonR\t'+str(pearsonrcorr[0])+'\n')
-    errors_file.write('SpearmanR\t'+str(spearcorr[0])+'\n')
     errors_file.close()
 
     reports_df_row = pd.DataFrame(
-        columns=['Name', 'MARE', 'MSE', 'R2', 'PearsonR', 'SpearmanR'])
+        columns=['Name', 'MARE', 'MSE', 'R2'])
     reports_df_row.set_value(0, 'Name', regr_name+'_Train')
     reports_df_row.set_value(0, 'MARE', MARE/len(y_predicted))
     reports_df_row.set_value(
         0, 'MSE', mean_squared_error(y_train, y_predicted))
     reports_df_row.set_value(0, 'R2', r2_score(y_train, y_predicted))
-    reports_df_row.set_value(0,'PearsonR',pearsonrcorr[0])
-    reports_df_row.set_value(0,'SpearmanR',spearcorr[0])
     reports_df = reports_df.append(reports_df_row)
 
     xPlot = y_train
@@ -210,8 +195,6 @@ for regr_choice in range(5):
     plt.figure(figsize=(10, 10))
     plt.plot(xPlot, yPlot, 'ro')
     plt.plot(xPlot, xPlot)
-    # plt.xlim(2.6,4.4)
-    # plt.ylim(2.6,4.4)
     plt.ylabel(regr_name)
     plt.xlabel('DFT')
     plt.savefig('Figs_'+regr_name+'_Correlation_Train', bbox_inches='tight')
